@@ -1,0 +1,12 @@
+-- plugin/md-autofm.lua
+--
+-- This file is sourced automatically by Neovim when the plugin is on the
+-- runtimepath.  It does NOT call setup() automatically so that users retain
+-- full control over configuration.
+--
+-- Add the following to your Neovim config to activate the plugin with the
+-- default settings:
+--
+--   require('md-autofm').setup()
+--
+-- See README.md or lua/md-autofm/init.lua for all available options.
