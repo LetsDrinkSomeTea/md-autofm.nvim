@@ -224,8 +224,14 @@ local function update_modified_at(bufnr, config)
   local current_tick = vim.api.nvim_buf_get_changedtick(bufnr)
   local snapshot_tick = _buf_ticks[bufnr]
 
-  -- No snapshot yet, or buffer hasn't been changed since last snapshot → skip.
-  if snapshot_tick and current_tick <= snapshot_tick then
+  -- No snapshot yet → initialize one now and skip (no baseline to compare against).
+  if not snapshot_tick then
+    _buf_ticks[bufnr] = current_tick
+    return
+  end
+
+  -- Buffer hasn't been changed since last snapshot → skip.
+  if current_tick <= snapshot_tick then
     return
   end
 
