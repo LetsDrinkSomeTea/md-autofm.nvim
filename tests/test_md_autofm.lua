@@ -238,6 +238,43 @@ do
 end
 
 -- ---------------------------------------------------------------------------
+-- H1 not duplicated when file already has one but no frontmatter
+-- ---------------------------------------------------------------------------
+
+io.write("\n── no-frontmatter + existing H1 ─────────────────────────────────\n")
+
+do
+  -- File with an H1 but no frontmatter.  After the plugin inserts frontmatter
+  -- it must NOT also insert another H1 (ensure_h1 + has_h1 guard).
+  local original = { "# My Note", "", "Some content." }
+  assert_true(has_h1(original), "pre-condition: H1 already present")
+  assert_false(parse(original).exists, "pre-condition: no frontmatter yet")
+
+  -- Simulate what ensure_frontmatter would prepend (no H1 appended because
+  -- has_h1(original) is true).
+  local now = ts("iso8601")
+  local prepended = {
+    "---",
+    "created_at: " .. now,
+    "modified_at: " .. now,
+    "---",
+    "",
+  }
+  for _, l in ipairs(original) do
+    table.insert(prepended, l)
+  end
+
+  local count = 0
+  for _, l in ipairs(prepended) do
+    if l:match("^# ") or l == "#" then
+      count = count + 1
+    end
+  end
+  assert_eq(count, 1, "exactly one H1 after frontmatter insertion")
+  assert_true(parse(prepended).exists, "frontmatter present after insertion")
+end
+
+-- ---------------------------------------------------------------------------
 -- Summary
 -- ---------------------------------------------------------------------------
 

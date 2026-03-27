@@ -155,7 +155,7 @@ local function ensure_frontmatter(bufnr, config)
     if config.insert_blank_line_after_frontmatter then
       table.insert(new_lines, "")
     end
-    if config.ensure_h1 then
+    if config.ensure_h1 and not has_h1(lines) then
       table.insert(new_lines, "# " .. filename)
     end
     -- nvim_buf_set_lines: (bufnr, start, end, strict, lines)
