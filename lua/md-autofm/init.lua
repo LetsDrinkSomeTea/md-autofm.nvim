@@ -223,15 +223,24 @@ end
 local function update_modified_at(bufnr, config)
   local current_tick = vim.api.nvim_buf_get_changedtick(bufnr)
   local snapshot_tick = _buf_ticks[bufnr]
+  local had_snapshot = snapshot_tick ~= nil
 
-  -- No snapshot yet → initialize one now and skip (no baseline to compare against).
-  if not snapshot_tick then
+  -- No snapshot yet: initialize baseline so future comparisons work.
+  -- We still allow the current save to continue when the buffer is modified.
+  if not had_snapshot then
+    snapshot_tick = current_tick
+    _buf_ticks[bufnr] = current_tick
+  end
+
+  -- Only update when this write is saving real pending buffer changes.
+  -- `:w` on an unmodified buffer must not touch `modified_at`.
+  if not vim.bo[bufnr].modified then
     _buf_ticks[bufnr] = current_tick
     return
   end
 
   -- Buffer hasn't been changed since last snapshot → skip.
-  if current_tick <= snapshot_tick then
+  if had_snapshot and current_tick <= snapshot_tick then
     return
   end
 

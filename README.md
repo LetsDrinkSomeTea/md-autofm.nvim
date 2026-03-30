@@ -237,6 +237,18 @@ nvim --headless -u NONE -l tests/test_md_autofm.lua
 
 Expected output: all lines starting with `PASS`, exit code `0`.
 
+Save-behavior regression test (requires headless Neovim):
+
+```sh
+nvim --headless -u NONE -l tests/test_save_behavior.lua
+```
+
+This verifies:
+
+* `:w` without edits does **not** update `modified_at`
+* `:w` after a real edit **does** update `modified_at`
+* a second `:w` without further edits does **not** update it again
+
 ---
 
 ## License
