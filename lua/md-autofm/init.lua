@@ -1,7 +1,10 @@
 ---@mod md-autofm Automatic YAML frontmatter management for Markdown files.
 ---
 --- On open  (BufReadPost / BufNewFile):
----   * Inserts a YAML frontmatter block at the top when none is present.
+---   * Inserts a YAML frontmatter block at the top when none is present AND
+---     the document has no H1 heading (i.e. is a new/empty file).
+---   * If the document already has an H1 but no frontmatter, it is left
+---     untouched.  Use :MdAutofmInsert to insert frontmatter manually.
 ---   * Adds missing `created_at` / `modified_at` keys to an existing block.
 ---   * `created_at` is NEVER overwritten once set.
 ---   * `modified_at` is only written when the key is absent on open.
@@ -10,6 +13,7 @@
 --- On save (BufWritePre):
 ---   * Updates `modified_at` only when the buffer was genuinely changed by the
 ---     user since the last open/save.  No change → no touch → no save-loop.
+---   * Does nothing when no frontmatter is present.
 
 local M = {}
 
@@ -124,9 +128,15 @@ end
 
 --- Ensure the buffer has a valid frontmatter block and (optionally) an H1.
 --- All mutations are idempotent: repeated calls produce the same result.
+---
+--- When `force` is false (the default, used by the autocommand) the function
+--- skips automatic insertion for documents that already have an H1 heading but
+--- no frontmatter.  Such documents are treated as existing, user-authored files.
+--- The user can invoke `:MdAutofmInsert` to insert frontmatter explicitly.
 ---@param bufnr  integer
----@param config table   Resolved plugin config.
-local function ensure_frontmatter(bufnr, config)
+---@param config table    Resolved plugin config.
+---@param force  boolean  When true, insert frontmatter even if an H1 already exists.
+local function ensure_frontmatter(bufnr, config, force)
   if not vim.api.nvim_buf_is_loaded(bufnr) then
     return
   end
@@ -144,6 +154,14 @@ local function ensure_frontmatter(bufnr, config)
   local fm = parse_frontmatter(lines)
 
   if not fm.exists then
+    -- When called automatically (force == false/nil), skip insertion for
+    -- documents that already have an H1.  A file with an H1 is assumed to be
+    -- an existing, user-authored document; the user can run :MdAutofmInsert
+    -- to add frontmatter explicitly.
+    if not force and has_h1(lines) then
+      return
+    end
+
     -- ── No frontmatter at all: prepend a complete block ─────────────────────
     local filename = get_filename(bufnr)
     local new_lines = {
@@ -301,11 +319,20 @@ function M.setup(opts)
       end,
     })
   end
+
+  -- User-facing command to manually insert YAML frontmatter into the current
+  -- buffer.  Unlike the automatic trigger, this always inserts even when the
+  -- document already has an H1.
+  vim.api.nvim_create_user_command("MdAutofmInsert", function()
+    local bufnr = vim.api.nvim_get_current_buf()
+    ensure_frontmatter(bufnr, config, true)
+  end, { desc = "Insert YAML frontmatter into the current Markdown buffer" })
 end
 
 -- Expose internals so tests can reach them without a running Neovim instance.
 M._parse_frontmatter = parse_frontmatter
 M._get_timestamp = get_timestamp
 M._has_h1 = has_h1
+M._ensure_frontmatter = ensure_frontmatter
 
 return M

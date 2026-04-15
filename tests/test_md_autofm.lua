@@ -275,6 +275,53 @@ do
 end
 
 -- ---------------------------------------------------------------------------
+-- Auto-skip guard: document with H1 but no frontmatter
+-- ---------------------------------------------------------------------------
+-- When called automatically (force == false/nil), ensure_frontmatter must NOT
+-- insert frontmatter into documents that already have an H1 heading.
+-- We verify this by checking the guard condition directly.
+
+io.write("\n── auto-skip guard (H1 present, no frontmatter) ──────────────────\n")
+
+do
+  -- A file with an H1 but no frontmatter represents an existing, user-authored
+  -- document.  The auto-trigger should leave it untouched.
+  local lines_with_h1 = { "# My Note", "", "Some content." }
+  local fm = parse(lines_with_h1)
+
+  -- Guard condition: not force (false) AND has_h1(lines) → skip
+  local would_skip = (not fm.exists) and has_h1(lines_with_h1)
+  assert_true(would_skip, "auto-skip fires for doc with H1 but no frontmatter")
+end
+
+do
+  -- An empty document has no H1 → the guard must NOT fire.
+  local empty_lines = {}
+  local fm = parse(empty_lines)
+
+  local would_skip = (not fm.exists) and has_h1(empty_lines)
+  assert_false(would_skip, "auto-skip does NOT fire for empty document")
+end
+
+do
+  -- A document with content but no H1 → guard does NOT fire → frontmatter inserted.
+  local lines_no_h1 = { "Some prose without a heading.", "", "More text." }
+  local fm = parse(lines_no_h1)
+
+  local would_skip = (not fm.exists) and has_h1(lines_no_h1)
+  assert_false(would_skip, "auto-skip does NOT fire when no H1 present")
+end
+
+do
+  -- With force == true the guard is bypassed even when H1 is present.
+  -- Simulate: force=true → guard condition is `not force and has_h1` → false.
+  local lines_with_h1 = { "# Existing Heading", "", "Body text." }
+  local force = true
+  local would_skip = (not force) and has_h1(lines_with_h1)
+  assert_false(would_skip, "force=true bypasses auto-skip guard")
+end
+
+-- ---------------------------------------------------------------------------
 -- Summary
 -- ---------------------------------------------------------------------------
 

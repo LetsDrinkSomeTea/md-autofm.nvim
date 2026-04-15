@@ -11,11 +11,13 @@ result with no duplicates.
 
 | What | When |
 |---|---|
-| Insert missing YAML frontmatter (`created_at`, `modified_at`) | On open |
+| Insert missing YAML frontmatter (`created_at`, `modified_at`) | On open of **new/empty** files only |
+| Skip auto-insertion when the document already has an H1 heading | On open of existing files |
 | Add missing keys to an existing frontmatter block | On open |
 | Never overwrite `created_at` once set | Always |
 | Insert `# <filename>` H1 when none exists | On open |
 | Update `modified_at` only when the buffer was genuinely edited | On save |
+| `:MdAutofmInsert` command to insert frontmatter manually | On demand |
 
 ---
 
@@ -37,8 +39,15 @@ tests/
 
 * `BufReadPost` + `BufNewFile` on `*.md` → `ensure_frontmatter()`  
   Handles files opened from an external file manager as well as files
-  created inside Neovim.
+  created inside Neovim.  Automatic insertion is **skipped** when the
+  document already has an H1 heading but no frontmatter (existing file).
 * `BufWritePre` on `*.md` → `update_modified_at()`
+
+**One user command:**
+
+* `:MdAutofmInsert` – inserts YAML frontmatter into the current buffer
+  unconditionally (even when the document already has an H1).  Use this to
+  add frontmatter to existing files on demand.
 
 **Frontmatter parsing is line-based.**  
 No external YAML parser is needed.  The parser only needs to locate
@@ -51,6 +60,18 @@ the document is never touched.
 ---
 
 ## Why idempotent / why no save-loops
+
+### Auto-skip for existing files
+
+When a Markdown file is opened (`BufReadPost` / `BufNewFile`) and it has **no
+frontmatter** but **already has an H1 heading**, `ensure_frontmatter` returns
+early without modifying the buffer.  This preserves existing user-authored
+documents exactly as written.
+
+For new/empty files (or files without any H1) frontmatter is inserted
+automatically as before.
+
+To add frontmatter to an existing file on demand, use `:MdAutofmInsert`.
 
 ### Idempotency on open
 
@@ -188,6 +209,30 @@ modified_at: 2026-03-27 14:06:00
 ---
 
 # my-note
+```
+
+### Existing file with H1 but no frontmatter → untouched on open
+
+```
+(before / after open – unchanged)
+# My Existing Note
+
+Body text here.
+```
+
+Open this file in Neovim and it is **not modified**.  Run `:MdAutofmInsert`
+to add frontmatter explicitly:
+
+```
+(after :MdAutofmInsert)
+---
+created_at: 2026-03-27 14:06:00
+modified_at: 2026-03-27 14:06:00
+---
+
+# My Existing Note
+
+Body text here.
 ```
 
 ### File with frontmatter, missing keys → only missing keys added
